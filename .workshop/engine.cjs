@@ -111,9 +111,10 @@ async function ensurePull(client, context, pulls, spec, task) {
 }
 
 async function setup(client, context) {
-  // Installation-token repository metadata can omit permissions entirely. An
-  // explicit denial is respected; otherwise GitHub enforces every scoped write.
-  if (context.repository.permissions?.push === false) throw new Error('Setup needs write access to your copy.');
+  // Installation-token metadata can report viewer push=false even when the
+  // workflow has contents:write. Those viewer-role flags are not token scopes.
+  // Keep the human preflight; GitHub enforces each installation-token mutation.
+  if (!client.token && context.repository.permissions?.push === false) throw new Error('Setup needs write access to your copy.');
   const issues = (await client.list('/issues?state=all')).rows;
   const lesson = `${context.url}/blob/${context.branch}/LAB.md`;
   const exercise = await ensureIssue(client, context, issues, 'exercise', `Exercise - Lab ${context.config.id}: ${context.config.title}`,
