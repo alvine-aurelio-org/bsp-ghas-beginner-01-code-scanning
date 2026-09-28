@@ -57,10 +57,15 @@ async function starterSpecs(client, context) {
   }];
   const preview = await client.file('src/routes/preview.cjs', head);
   const workflow = await client.file('.github/workflows/codeql.yml', head);
-  if (!preview.includes('${escape(label)}') || !preview.includes('Ticket preview') || !workflow.includes('languages: javascript-typescript')) throw new Error('Unexpected gate-case baseline; refusing to manufacture a different defect.');
+  if (!preview.includes('${escape(label)}') || !workflow.includes('languages: javascript-typescript')) throw new Error('Unexpected gate-case baseline; refusing to manufacture a different defect.');
+  const rawPreview = preview.replace('${escape(label)}', '${label}');
+  const unsafePreview = rawPreview.includes('Ticket preview')
+    ? rawPreview.replace('Ticket preview', 'Secure ticket preview')
+    : rawPreview.replace('<p>${label}</p>', '<h1>Secure ticket preview</h1><p>${label}</p>');
+  if (unsafePreview === rawPreview) throw new Error('Unexpected preview layout; no useful heading could be retained after repair.');
   return [{
     key: 'unsafe', branch: 'lab/unsafe-preview', title: 'Lab 05: repair this blocked preview PR',
-    files: { 'src/routes/preview.cjs': preview.replace('${escape(label)}', '${label}').replace('Ticket preview', 'Secure ticket preview') },
+    files: { 'src/routes/preview.cjs': unsafePreview },
     explanation: 'A controlled in-diff output-encoding defect. Do not merge the red revision. Restore escaping while keeping the useful new heading. Keep all tests and security rules.'
   }, {
     key: 'missing', branch: 'lab/missing-analysis', title: 'Lab 05: restore the missing CodeQL analysis',
