@@ -9,7 +9,7 @@ permissions:
   checks: read
   security-events: read
 concurrency:
-  group: bsp-beginner-management
+  group: bsp-beginner-setup
   cancel-in-progress: false
 jobs:
   setup:

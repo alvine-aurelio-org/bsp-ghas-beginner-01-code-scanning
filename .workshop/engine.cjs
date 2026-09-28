@@ -56,8 +56,8 @@ async function starterSpecs(client, context) {
     explanation: 'This notes-only starter PR is not a fix. Use its branch for the manual exercise. For Autofix or Dependabot, use the genuine generated PR and close this unused starter without merging it.'
   }];
   const preview = await client.file('src/routes/preview.cjs', head);
-  const workflow = await client.file('.github/workflows/codeql.yml', head);
-  if (!preview.includes('${escape(label)}') || !workflow.includes('languages: javascript-typescript')) throw new Error('Unexpected gate-case baseline; refusing to manufacture a different defect.');
+  const queryConfig = await client.file('.github/codeql/codeql-config.yml', head);
+  if (!preview.includes('${escape(label)}') || !queryConfig.includes('name: BSP beginner CodeQL')) throw new Error('Unexpected gate-case baseline; refusing to manufacture a different defect.');
   const rawPreview = preview.replace('${escape(label)}', '${label}');
   const unsafePreview = rawPreview.includes('Ticket preview')
     ? rawPreview.replace('Ticket preview', 'Secure ticket preview')
@@ -69,8 +69,9 @@ async function starterSpecs(client, context) {
     explanation: 'A controlled in-diff output-encoding defect. Do not merge the red revision. Restore escaping while keeping the useful new heading. Keep all tests and security rules.'
   }, {
     key: 'missing', branch: 'lab/missing-analysis', title: 'Lab 05: restore the missing CodeQL analysis',
-    files: { '.github/workflows/codeql.yml': workflow.replace('languages: javascript-typescript', 'languages: bsp-invalid-language'), 'exercise/scan-recovery.md': '# Scan recovery\n\nFix the invalid language, inspect a successful scan, then close this demonstration PR.\n' },
-    explanation: 'A deliberately invalid language prevents analysis. Missing analysis is NOT a clean scan. Restore javascript-typescript, inspect the new run, then close this demonstration without merging the broken configuration.'
+    files: { '.github/codeql/codeql-config.yml': 'name: BSP beginner CodeQL\npaths:\n  - src\nqueries:\n  - uses: ./bsp-missing-query.ql\n',
+      'exercise/scan-recovery.md': '# Scan recovery\n\nReplace the missing query with security-extended, inspect a successful scan, then close this demonstration PR.\n' },
+    explanation: 'A deliberately nonexistent query prevents analysis. Missing analysis is NOT a clean scan. Replace ./bsp-missing-query.ql with security-extended in the CodeQL configuration, inspect the new run, then close this demonstration without merging the broken configuration. No workflow-file write permission is needed.'
   }];
 }
 
@@ -110,7 +111,9 @@ async function ensurePull(client, context, pulls, spec, task) {
 }
 
 async function setup(client, context) {
-  if (!context.repository.permissions?.push) throw new Error('Setup needs write access to your copy.');
+  // Installation-token repository metadata can omit permissions entirely. An
+  // explicit denial is respected; otherwise GitHub enforces every scoped write.
+  if (context.repository.permissions?.push === false) throw new Error('Setup needs write access to your copy.');
   const issues = (await client.list('/issues?state=all')).rows;
   const lesson = `${context.url}/blob/${context.branch}/LAB.md`;
   const exercise = await ensureIssue(client, context, issues, 'exercise', `Exercise - Lab ${context.config.id}: ${context.config.title}`,
@@ -119,7 +122,18 @@ async function setup(client, context) {
     `Follow [the lesson](${lesson}) and track the real alert, PR and final run links here.\n\nAssign yourself. Note one target date. Do not paste secret values.\n\nExercise: #${exercise.number}. A merged PR only counts as remediation after the original native alert reports **fixed** (or, for the inert secret, the correctly explained test resolution).`);
   const pulls = (await client.list('/pulls?state=all')).rows;
   const created = [];
-  for (const spec of await starterSpecs(client, context)) created.push(await ensurePull(client, context, pulls, spec, task));
+  const identities = context.config.starter === 'gates'
+    ? [{ key: 'unsafe', branch: 'lab/unsafe-preview' }, { key: 'missing', branch: 'lab/missing-analysis' }]
+    : [{ key: 'work', branch: 'lab/work' }];
+  let specs;
+  for (const identity of identities) {
+    let spec = identity;
+    if (!pulls.some((pr) => pr.body?.includes(marker(context, `pr-${identity.key}`)))) {
+      specs ??= await starterSpecs(client, context);
+      spec = specs.find((candidate) => candidate.key === identity.key);
+    }
+    created.push(await ensurePull(client, context, pulls, spec, task));
+  }
   await unchanged(client, context);
   return { exercise: exercise.html_url, task: task.html_url, pulls: created.map((pr) => ({ number: pr.number, url: pr.html_url, state: pr.state })) };
 }
@@ -185,8 +199,9 @@ async function collect(client, context, { full = true } = {}) {
     checks: { available: checks.available, rows: latestChecks(checks.rows).filter((check) => check.sha === context.head) },
     pulls: [], dependencies: { available: false, status: 'not-requested', rows: [] }, secrets: { available: false, status: 'not-requested', rows: [] }
   };
-  const selected = pulls.rows.filter((pr) => pr.head?.repo?.id === context.repository.id && pr.base?.repo?.id === context.repository.id && pr.base.ref === context.branch &&
-    (pr.body?.includes(`<!-- ${MARKER}:`) || ['dependabot[bot]', 'copilot-swe-agent[bot]'].includes(pr.user?.login) || pr.state === 'open'));
+  // Retain closed human-authored repair PRs too: standard Autofix need not use
+  // the cloud-agent identity, and history must not disappear after a merge.
+  const selected = pulls.rows.filter((pr) => pr.head?.repo?.id === context.repository.id && pr.base?.repo?.id === context.repository.id && pr.base.ref === context.branch);
   if (selected.length > 30) throw new Error('More than 30 lab PRs need inspection; ask the instructor to narrow the exercise.');
   for (const summary of selected) {
     const pr = (await client.request(`/pulls/${summary.number}`)).data;

@@ -191,8 +191,8 @@ Do not silence tests, downgrade, inline registry secrets, or mistake `lab/work` 
 CodeQL finding, missing required analysis, failed QA, pending run, and inherited
 approval requirement. In Lab 05, only the admin runs `lab:gates` and only for its
 owned named ruleset; verify medium-or-higher and all three required check names.
-Restore `bsp-invalid-language` to `javascript-typescript` on the missing-analysis
-case, observe valid green analysis, then close it without merging.
+Replace `./bsp-missing-query.ql` with `security-extended` in the missing-analysis
+case's query configuration, observe valid green analysis, then close without merging.
 
 **See result:** the precise block is visible and the repaired useful preview can
 pass the same rules. If enforcement cannot be demonstrated, leave that result pending.

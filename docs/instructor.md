@@ -126,8 +126,8 @@ expected. A different failure, missing analysis, or denied API needs investigati
   content out of the working tree and performs automatic remote-ref checks.
   Success requires native **GH013 / SendGrid** plus the exact remote ref absent.
   Other push failures do not prove secret protection. Never bypass it. Unexpected
-  acceptance means stop, retain sanitized evidence, and follow only the script's
-  exact owned-branch cleanup instruction; do not retry or delete unrelated refs.
+  acceptance means stop and retain sanitized evidence. The script removes only
+  its exact unexpected canary ref when safe; do not retry or delete unrelated refs.
 - For Lab 05 only, the authorized repository admin runs `npm run lab:gates` from
   clean default. Inspect the command's **named, owned training ruleset**: `dev`,
   native CodeQL medium-or-higher, **Quality / unit-and-compatibility**,
@@ -135,8 +135,8 @@ expected. A different failure, missing analysis, or denied API needs investigati
   **0 independent required approvals**, and no bypass actors. Do not adopt or
   alter unrelated rulesets. Existing inherited approvals must still be obtained.
 - Observe the raw preview finding separately from its failed test. For missing
-  analysis, `bsp-invalid-language` intentionally prevents CodeQL analysis; restore
-  `javascript-typescript`, observe green valid analysis, then **close without merge**.
+  analysis, `./bsp-missing-query.ql` intentionally names an absent query; replace it
+  with `security-extended`, observe green valid analysis, then **close without merge**.
   Retain the useful heading when escaping the unsafe preview so its repair is not
   an empty diff. Merge only that safe, useful change through the unchanged rules.
 
