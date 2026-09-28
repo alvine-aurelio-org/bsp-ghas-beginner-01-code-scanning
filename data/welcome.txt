@@ -1,0 +1,3 @@
+Welcome to the synthetic GHAS classroom seed.
+All tickets, identities and documents in this application are invented.
+Keep the application on loopback and use only the provided lab fixtures.

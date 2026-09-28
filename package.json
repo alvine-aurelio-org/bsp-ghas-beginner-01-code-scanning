@@ -1,0 +1,30 @@
+{
+  "name": "bsp-ghas-beginner-01-code-scanning",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Beginner GHAS Lab 01: Find and fix your first CodeQL alerts; synthetic local training only",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24.16.0 <25"
+  },
+  "scripts": {
+    "start": "node src/server.cjs",
+    "test": "node --test test/baseline.test.cjs test/mock-provider.test.cjs test/metrics.test.cjs",
+    "test:security": "node --test test/security.test.cjs test/rate-limit.test.cjs",
+    "test:rate-limit": "node --test test/rate-limit.test.cjs",
+    "test:compatibility": "node --test test/dependency-policy.test.cjs",
+    "lab:setup": "node .workshop/cli.cjs setup",
+    "lab:status": "node .workshop/cli.cjs status",
+    "lab:enable": "node .workshop/cli.cjs enable",
+    "lab:gates": "node .workshop/cli.cjs gates",
+    "lab:secret-response": "node .workshop/local-demos.cjs secret-response",
+    "lab:metrics": "node .workshop/local-demos.cjs metrics",
+    "lab:smoke": "node .workshop/local-demos.cjs smoke",
+    "lab:push-check": "node .workshop/push-probe.cjs"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "express-rate-limit": "8.7.0",
+    "lodash": "4.18.1"
+  }
+}

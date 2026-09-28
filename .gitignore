@@ -1,0 +1,9 @@
+node_modules/
+.workshop-state/
+.artifacts/
+coverage/
+.env
+.env.*
+*.log
+*.sarif
+.opencode/

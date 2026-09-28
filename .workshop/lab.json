@@ -1,0 +1,27 @@
+{
+  "edition": "beginner-2026",
+  "id": "01",
+  "name": "bsp-ghas-beginner-01-code-scanning",
+  "title": "Find and fix your first CodeQL alerts",
+  "minutes": 60,
+  "baseline": "download",
+  "originalModules": [
+    "01",
+    "02",
+    "03"
+  ],
+  "expectedRules": [
+    "js/path-injection",
+    "js/missing-rate-limiting"
+  ],
+  "starter": "repair",
+  "taskTitle": "Fix the download alerts, one change at a time",
+  "steps": [
+    "See your own CodeQL alerts",
+    "Read the unsafe file-path flow",
+    "Allow only the two workshop files",
+    "Limit repeated downloads",
+    "Merge and see the original alerts fixed"
+  ],
+  "source": "alvine-aurelio-org/bsp-ghas-beginner-01-code-scanning"
+}

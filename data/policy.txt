@@ -1,0 +1,4 @@
+Synthetic workshop policy -- not an organizational policy.
+Never enter real credentials or connect a production service.
+Use benign markup and owned temporary path canaries only.
+Review remediation evidence before changing a dependency compatibility policy.

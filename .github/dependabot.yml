@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+# Security updates are enabled in Settings. Change 0 to 3 in Lab 04 for version updates.
