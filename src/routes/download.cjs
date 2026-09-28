@@ -2,19 +2,31 @@
 
 const path = require('node:path');
 const { readFile } = require('node:fs/promises');
+const { rateLimit } = require('express-rate-limit');
 
 function registerDownload(app, dataRoot) {
-  app.get('/download', async (req, res) => {
+  // Only these trusted static targets are readable. Map has no prototype keys.
+  // dataRoot and the two fixture files must be administrator-controlled, not symlinks.
+  const allowedFiles = new Map([
+    ['welcome.txt', path.resolve(dataRoot, 'welcome.txt')],
+    ['policy.txt', path.resolve(dataRoot, 'policy.txt')]
+  ]);
+
+  const limiter = rateLimit({
+    windowMs: 60_000,
+    limit: 60,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false
+  });
+  app.get('/download', limiter, async (req, res) => {
     const name = req.query.name;
-    if (typeof name !== 'string' || name.length === 0) {
-      return res.status(400).type('text/plain').send('Provide a single file name.');
+    if (typeof name !== 'string' || !allowedFiles.has(name)) {
+      return res.status(400).type('text/plain').send('Choose welcome.txt or policy.txt.');
     }
 
-    // LAB WARNING: intentionally unsafe path-injection candidate. path.resolve
-    // does NOT confine user input to dataRoot. Exercise only owned temp canaries.
-    const target = path.resolve(dataRoot, name);
     try {
-      const content = await readFile(target, 'utf8');
+      // User input selects a map entry; it is never joined into a filesystem path.
+      const content = await readFile(allowedFiles.get(name), 'utf8');
       return res.type('text/plain').send(content);
     } catch (error) {
       if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
