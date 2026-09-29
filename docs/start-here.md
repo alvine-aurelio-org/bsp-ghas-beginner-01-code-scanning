@@ -12,9 +12,12 @@ You need no previous lab's files, issue numbers, or scan history.
 - Use your approved GitHub organization and own account. The instructor confirms
   existing **Code Security** and **Secret Protection** entitlement, capacity, and
   any trial expiry before enabling this private copy. A Copilot seat is not a substitute.
-- Install **Node.js 24.16.0 or newer within 24.x**, npm, **Git**, **GitHub CLI (`gh`)**,
-  and VS Code through your approved software channel. Use the required 24.x line,
-  not an older patch or a different major version.
+- Your laptop needs **Git, VS Code, and a browser for github.com only**, installed
+   through approved channels. On Windows, use Git for Windows with Git Credential
+   Manager's normal browser sign-in, or your organization's approved SSH setup.
+   No local Node.js, package manager, GitHub CLI, test runner, or application server
+   is required. Node/npm remain behind GitHub Actions; authoring tools are not
+   participant or classroom setup requirements.
 - Confirm that you can create/use the private copy, push changes, open issues/PRs,
   and read its code, dependency, and secret alerts. Settings changes need repository
   admin rights; ask the instructor to perform them if you lack those rights.
@@ -78,7 +81,7 @@ workflow, not a second setup method, will run CodeQL.
 **Why:** enabling a product is not a scan. Repository settings do not prove findings
 exist, and an empty or inaccessible alert page is not evidence of safety.
 
-## 4. Sign in locally and recreate the work items
+## 4. Verify Git authentication and start the lab in the browser
 
 **Do**
 
@@ -88,60 +91,71 @@ commands **one at a time**. Stop on an unexpected error; never paste past a fail
 ```powershell
 git remote -v
 git status --short --branch
-node --version
 git --version
-gh --version
-gh auth status
+git config --get user.name
+git config --get user.email
 ```
 
-The remote must be your copy and the branch must be clean `dev`. If GitHub CLI is
-not signed in to the approved account, run `gh auth login`: choose **GitHub.com ->
-HTTPS -> Login with a web browser** and complete the normal browser flow yourself.
-Accept normal Git authentication setup if offered. Recheck `gh auth status`.
-Browser, Git, and CLI sign-in are separate checks; satisfy existing MFA/SSO policy.
-Do not create/paste a PAT, export a Git token into the environment, or save tokens
-in repository files, commands, issues, screenshots, or lessons.
+The remote must be your copy, the branch clean `dev`, and the commit identity your
+own. Existing correct identity settings should be preserved. If missing or wrong,
+replace both placeholders below with your own name and GitHub verified/noreply
+email, and set them **for this clone only**, not globally:
 
 ```powershell
-npm ci --ignore-scripts --no-audit --no-fund
-npm run lab:setup
-npm run lab:status
+git config user.name "YOUR_NAME"
+git config user.email "YOUR_VERIFIED_OR_NOREPLY_EMAIL"
 ```
 
-The install reproduces the committed lockfile without dependency lifecycle scripts.
-`lab:setup` and `lab:status` require a **clean, trusted default checkout**, not PR
-code. They act only on your verified copy. Your authorized CLI session supplies the
-full alert reads; no credential is embedded in the project.
+Verify read access with `git fetch origin`. Complete Git Credential Manager's
+browser authentication when prompted, using your approved account and existing
+MFA/SSO; approved SSH is the alternative. Browser sign-in, Git authentication, and
+commit attribution are different checks. A configured email does not authenticate
+Git. If prompted for a token instead of the approved flow, stop for instructor help.
+Never create/copy/paste/export a PAT or Git token, share accounts, or put credentials
+in repository files, commands, issues, screenshots, or environment variables.
 
-**See result:** setup prints links to the recreated **Exercise** issue, task issue,
-and starter work PR (`lab/work` for Labs 01-04; two named cases for Lab 05).
-Status reads your copy's alerts/checks and refreshes the Exercise comment. Rerunning
-setup safely preserves existing **open and closed** issues/PRs; it does not reset progress.
+1. In your copy, open **Actions**. If GitHub asks to enable the copied workflows,
+   have an authorized user confirm only this repository's approved workflows.
+2. Choose **Start lab -> Run workflow -> dev**. Leave **Create starter pull requests**
+   (`create_starter_prs`) selected; its default is **true**. Select **Run workflow**.
+3. Read the run summary and open its **Exercise**, task issue, and PR links.
+   Labs 01-04 use notes-only `lab/work`; Lab 05 has two separate gate cases.
+4. If organization policy denies automated PR creation, rerun **Start lab** on
+   `dev` with **Create starter pull requests** cleared (**false**). This creates or
+   reuses **issues only**. Then follow [manual-setup.md](manual-setup.md) using Git,
+   VS Code, and the browser's native **New pull request**. Fetch and inspect any
+   partially created branches; never overwrite them or loosen policy.
+5. If even issue automation is unavailable, the instructor arranges human-created
+   Exercise/task issues and native evidence links as described in manual setup.
+   An unavailable automated comment is not a clean result or a completed setup.
+
+**See result:** your own work items are linked, with fresh IDs where created.
+Reruns preserve existing **open and closed** issues/PRs; they never reset/recreate
+closed work. Check the Closed views too; a new attempt needs instructor coordination.
 
 **Why:** templates copy files, not work-item identities. The recreated starter is
-not a copied solution, a copied alert, or a bot security-update PR.
-
-**Optional browser setup:** in your copy, open **Actions**, approve the repository's
-workflows banner if GitHub shows one, then **Start lab -> Run workflow -> dev ->
-Run workflow**. This uses the same setup intent. If Actions cannot create PRs,
-use the local CLI setup above; do not weaken organization policy or add a PAT.
-Still run local `lab:status` for the full privileged read: an Actions token may
-not read every alert type, and "unavailable" never means zero alerts.
+not a copied solution, copied alert, or bot security-update PR. GitHub Actions setup
+and progress use their own token, not your Git credentials; that token is not assumed
+to have Dependabot or secret-alert access. Use the native Security pages for those.
 
 ## 5. Open the lesson and its real results
 
 **Do**
 
 1. Open **Issues -> Exercise**, then the linked task issue and [LAB.md](../LAB.md).
-2. Open **Actions -> CodeQL**. Inspect a run for current `dev`. If no run occurred
-   after enablement, use **CodeQL -> Run workflow -> dev -> Run workflow**.
-   Allow any legitimate workflow-approval prompt; do not change policy to avoid it.
-3. Open **Security -> Code scanning / Secret scanning / Dependabot alerts** as
-   directed by the lesson. Match this repository and the default revision.
-4. Run `npm test`, `npm run test:compatibility`, and `npm run test:security` separately.
-   Compare the **initial** security result below; the named failures are intentional.
+2. **Before any lesson changes**, open the original `dev` runs for **Quality /
+   unit-and-compatibility** and **Security regression / secure-behavior**. Their
+   **Summary** reports checkout SHA, installed lodash version, and suite counts.
+   Save those run URLs and counts; a later repaired run cannot replace a baseline.
+   If a baseline run is missing, use that workflow's **Run workflow -> dev**, with
+   the instructor if needed. Do not change source to manufacture a missing result.
+3. Open **Actions -> CodeQL** for that default revision. If no run occurred after
+   enablement, use **CodeQL -> Run workflow -> dev -> Run workflow**. Then inspect
+   **Security -> Code scanning / Secret scanning / Dependabot alerts** as directed.
+4. Compare the actual **initial** results below. All tests run on GitHub's runner,
+   against the committed lockfile; no laptop install or tests are needed.
 
-| Lab | `npm test` | Compatibility | Security baseline |
+| Lab | Ordinary tests | Compatibility | Security baseline |
 | --- | --- | --- | --- |
 | 01 | 20 pass | 3 pass | 1 pass / 2 fail: download + limiter |
 | 02 | 20 pass | 3 pass | 2 pass / 1 fail: preview |
@@ -154,24 +168,61 @@ Lab 05's unsafe PR intentionally differs from its safe default. Lab 04's bot upd
 intentionally fails one compatibility test until reviewed. Unexpected failures,
 skipped tests, missing scans, and zero-test runs are not completion.
 
-**Why:** local tests check behavior; native scans supply separate GitHub evidence.
+**Why:** Actions tests check behavior; native scans supply separate GitHub evidence.
 Use [troubleshooting.md](troubleshooting.md) if either is missing.
+
+## Check out a PR branch
+
+Open the **actual PR in your copy** and read its head branch near the title. Confirm
+base `dev` and the expected repository. For Dependabot or Autofix, use **their real
+PR's head**, not the notes-only `lab/work` starter. Never impersonate a bot or rewrite
+its existing commits. Replace `ACTUAL_BRANCH` below with that exact branch name;
+do not type the placeholder literally or include an `owner:` prefix.
+
+Run commands separately. First ensure the working tree has no file entries:
+
+```powershell
+git status --short --branch
+git fetch origin
+```
+
+Preserve, save, and commit/push intended work before switching; do not discard it.
+If the branch has **not been created locally**, use this first-time command:
+
+```powershell
+git switch --track origin/ACTUAL_BRANCH
+```
+
+If the branch **already exists locally**, use these commands instead:
+
+```powershell
+git switch ACTUAL_BRANCH
+git pull --ff-only
+```
+
+Check the VS Code branch indicator against the PR. Stop on conflicts, a missing
+upstream, an unexpected remote, or a refused fast-forward; ask the instructor rather
+than reset or force-push. Manual setup covers partially created branches without a PR.
 
 ## Save and push a small change
 
-- Run `gh pr list` to find the **actual number in your copy**. In `gh pr checkout NUMBER`,
-  replace `NUMBER` with that number; do not type it literally or use the template's number.
-- In VS Code, edit the lesson's named file and **Save**. In **Source Control**, inspect
-  the diff, use **+** beside only the intended files, enter a message, and **Commit**.
-  Then choose **... -> Push**. Confirm the commit links to your own GitHub identity;
-  use your account's verified/noreply email if local commit identity needs setup.
-- Browser alternative: open **Pull requests -> your PR -> Files changed -> file menu
-  -> Edit file**, or choose that PR's branch in **Code** and use the pencil. Commit
-  to the **existing PR branch**, never directly to `dev`. Copy full solution text
-  only when the lesson offers it. Pull those commits into the matching clean local
-  branch before running tests; do not mix unsaved local and browser edits.
-- Inspect **Files changed** and **Checks** at the newest PR revision. Merge only
-  when the lesson says to and current rules allow it. There is no extra independent
+- Confirm you are on the actual PR branch, **never `dev`**. Use VS Code to edit,
+   copy full solution text only when offered, or delete the one named fixture.
+   Save, then in **Source Control** inspect the diff, stage **only intended files**,
+   enter a message, and **Commit**. Choose **... -> Push**, not an unreviewed sync.
+   Verify the human commit is attributed to you; preserve genuine bot commits.
+- A Git push triggers CI and CodeQL. **Dependency review** runs on PRs only, not a
+   standalone default-branch push. Setup-created PRs may show **Approve workflows to
+   run**: an authorized human with write access can approve the run. If no run was
+   triggered, a normal participant commit on that PR branch triggers checks; use a
+   small notes-only commit where the lesson needs an unchanged negative baseline.
+   Never remove rules/assertions or claim that an unrun check passed.
+- Open **Files changed**, **Checks**, and each current Actions run's **Summary**.
+   Match the associated PR/head revision and the reported **checkout SHA**; a PR
+   workflow can check a merge SHA rather than the head SHA. Retain both as labelled,
+   not an invented match. Check 20 ordinary, 3 compatibility, and 3 security tests,
+   including the lesson's named intentional failures. Zero/skipped tests do not count.
+- Merge only when the lesson says to and current rules allow it. There is no extra independent
   reviewer requirement in this beginner path; all inherited requirements still apply.
 
 ## Refresh progress from dev
@@ -180,20 +231,30 @@ First save/commit/push intended PR work; never discard edits just to get a clean
 After a normal merge, run each command separately and stop if it fails:
 
 ```powershell
-git status --short
+git status --short --branch
 git switch dev
 git pull --ff-only
-npm ci --ignore-scripts --no-audit --no-fund
-npm run lab:status
 ```
 
-The first command must show no local edits. Confirm the updated default revision's
-native runs and original alert states. A green workflow can contain alerts; a
-dismissal is not a repair. Indexing/permission gaps remain pending or unavailable.
+The first command must show no file entries. Inspect Actions summaries and default
+CodeQL analysis for the **merged default checkout SHA**, then reopen the original
+native alert URLs. A successful CodeQL run can contain findings; a dismissal is not
+a repair. Indexing and permission gaps stay **pending** or **unavailable**.
+
+If needed, open **Actions -> Lab progress -> Run workflow -> dev -> Run workflow**.
+Its Exercise comment is a **CodeQL/PR snapshot**, not whole-lab completion. Check
+Dependabot and secret states on the **actual native Security pages** and place the
+original alert URLs and observed states in the task issue. An Actions token is not
+assumed entitled to those reads. If issue comments are unavailable, the instructor
+owns that setup gap; human notes and native pages remain evidence, not a fake green.
+
 Keep [exercise/notes.md](../exercise/notes.md) to one page; use the task issue for
 final post-merge URLs rather than creating an extra documentation-only merge loop.
+Source-template reports and historical receipts never prove participant completion.
 
-**Safety:** use only bundled synthetic fixtures and owned test canaries. Loopback
-is not a filesystem sandbox; keep the vulnerable app away from sensitive data.
-No real payloads, real credentials, external provider tests, tunnels, public hosting,
-or cloud release are part of these labs. More context: [topics.md](topics.md).
+**Safety:** only approved synthetic fixtures and owned canaries are used. The Lab 03
+push fixture is intentionally copied from its private Actions summary; historical
+secret alert values must not be revealed/copied. No real credentials, external
+provider tests, laptop servers, tunnels, public hosting, or cloud release are part
+of these labs. **Lab demonstrations** exists only in Labs 03 and 05; its smoke
+checks use runner loopback, not a participant-hosted app. See [topics.md](topics.md).

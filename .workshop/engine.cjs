@@ -12,13 +12,19 @@ async function contextFor(client, config) {
   if (config.edition !== 'beginner-2026' || !/^0[1-5]$/.test(config.id)) throw new Error('Unexpected lab configuration.');
   const repository = (await client.request()).data;
   if (repository.full_name?.toLowerCase() !== client.repository.toLowerCase() || !Number.isSafeInteger(repository.id)) throw new Error('Repository identity mismatch.');
-  if (!repository.private || repository.fork || repository.owner?.type !== 'Organization') throw new Error('This edition requires a private, non-fork copy in your approved organization.');
+  const source = repository.full_name.toLowerCase() === config.source.toLowerCase();
+  // Preserve the publisher's already-public Lab 01 source, without broadening
+  // participant-copy visibility or altering any repository access setting.
+  const publicSource = source && config.id === '01' && config.sourceVisibility === 'public' &&
+    config.sourceRepositoryId === 1392023553 && repository.id === 1392023553 &&
+    repository.full_name.toLowerCase() === 'alvine-aurelio-org/bsp-ghas-beginner-01-code-scanning' &&
+    repository.owner?.id === 249697069 && repository.private === false && repository.visibility === 'public';
+  if ((!repository.private && !publicSource) || repository.fork || repository.owner?.type !== 'Organization') throw new Error('This edition requires a private, non-fork participant copy in your approved organization.');
   // Normal packages permit participants' own entitled organizations. An instructor
   // may explicitly bind an edition to one owner; never ignore that restriction.
   if (config.owner !== undefined || config.ownerId !== undefined) {
     if (repository.owner.login?.toLowerCase() !== config.owner?.toLowerCase() || repository.owner.id !== config.ownerId) throw new Error('Repository owner does not match the instructor-approved organization identity.');
   }
-  const source = repository.full_name.toLowerCase() === config.source.toLowerCase();
   if (!source && repository.template_repository?.full_name?.toLowerCase() !== config.source.toLowerCase()) throw new Error('The copy does not identify the expected source template. Use this template, not an unrelated repository.');
   const branch = repository.default_branch;
   if (typeof branch !== 'string' || !/^[A-Za-z0-9_./-]+$/.test(branch)) throw new Error('Invalid default branch.');
@@ -110,7 +116,8 @@ async function ensurePull(client, context, pulls, spec, task) {
   return pr;
 }
 
-async function setup(client, context) {
+async function setup(client, context, { createPulls = true } = {}) {
+  if (typeof createPulls !== 'boolean') throw new Error('Choose whether Start lab should create starter pull requests.');
   // Installation-token metadata can report viewer push=false even when the
   // workflow has contents:write. Those viewer-role flags are not token scopes.
   // Keep the human preflight; GitHub enforces each installation-token mutation.
@@ -118,9 +125,14 @@ async function setup(client, context) {
   const issues = (await client.list('/issues?state=all')).rows;
   const lesson = `${context.url}/blob/${context.branch}/LAB.md`;
   const exercise = await ensureIssue(client, context, issues, 'exercise', `Exercise - Lab ${context.config.id}: ${context.config.title}`,
-    `## Start with the short lesson\n\n[Open LAB.md](${lesson}) and follow one step at a time.\n\n${context.config.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n## See progress\n\nThe automatic comment shows native CodeQL and current check results. Run \`npm run lab:status\` from your trusted default checkout for a full security snapshot, including Dependabot and secret alerts. Permission denied means **unavailable**, never zero findings. Manual checkboxes are not proof of a fix.\n\n[Security](${context.url}/security) | [Actions](${context.url}/actions) | [Pull requests](${context.url}/pulls)\n\n${context.source ? '**Source template:** this is an unfinished example, not participant completion.' : 'These issues and starter PRs were recreated in your copy. GitHub scans create your own alerts.'}`);
+    `## Start with the short lesson\n\n[Open LAB.md](${lesson}) and follow one step at a time using **Git, VS Code, and GitHub.com**.\n\n${context.config.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n## See progress\n\n**Lab progress** shows native CodeQL and current check results. Use **Security -> Dependabot alerts / Secret scanning** for those original native states; no local management command is needed. Permission denied means **unavailable**, never zero findings. Manual checkboxes are not proof of a fix. If automated PR creation is unavailable, use the [Git/browser setup](${context.url}/blob/${context.branch}/docs/manual-setup.md).\n\n[Security](${context.url}/security) | [Actions](${context.url}/actions) | [Pull requests](${context.url}/pulls)\n\n${context.source ? '**Source template:** this is an unfinished example, not participant completion.' : 'Work items belong to this copy. GitHub scans create your own alerts.'}`);
   const task = await ensureIssue(client, context, issues, 'task', context.config.taskTitle,
     `Follow [the lesson](${lesson}) and track the real alert, PR and final run links here.\n\nAssign yourself. Note one target date. Do not paste secret values.\n\nExercise: #${exercise.number}. A merged PR only counts as remediation after the original native alert reports **fixed** (or, for the inert secret, the correctly explained test resolution).`);
+  if (!createPulls) {
+    await unchanged(client, context);
+    return { exercise: exercise.html_url, task: task.html_url, pulls: [],
+      manualSetup: `${context.url}/blob/${context.branch}/docs/manual-setup.md`, starterCreation: 'not requested; preserve any existing branches and PRs' };
+  }
   const pulls = (await client.list('/pulls?state=all')).rows;
   const created = [];
   const identities = context.config.starter === 'gates'
@@ -169,6 +181,25 @@ function latestChecks(rows) {
     sha: check.head_sha, url: check.html_url, id: check.id }));
 }
 
+function observedChecks(rows, runs, context, { pr, lookupSha, scope }) {
+  // A push and a PR workflow can report the same check name/source SHA while
+  // testing different trees. Preserve each native check and its event, never
+  // let a newer green push check erase a red PR check.
+  return [...new Map(rows.filter((check) => check.app?.id === 15368 && check.head_sha === lookupSha)
+    .map((check) => [check.id, check])).values()].map((check) => {
+    const run = runs.find((candidate) => candidate.check_suite_id === check.check_suite?.id &&
+      candidate.repository?.id === context.repository.id && candidate.head_repository?.id === context.repository.id &&
+      (candidate.head_sha === lookupSha || candidate.head_sha === pr?.head.sha));
+    let event = 'unresolved event';
+    if (run?.event === 'pull_request' && pr && run.pull_requests?.some((item) => item.number === pr.number &&
+      item.head?.sha === pr.head.sha && item.head.repo?.id === context.repository.id && item.base?.sha === pr.base.sha && item.base.repo?.id === context.repository.id)) event = 'pull_request';
+    if (run?.event === 'push' && run.head_branch === (pr?.head.ref ?? context.branch) && run.head_sha === lookupSha) event = 'push';
+    if (run?.event === 'workflow_dispatch' && run.head_branch === (pr?.head.ref ?? context.branch) && run.head_sha === lookupSha) event = 'workflow_dispatch';
+    return { name: check.name, status: check.status, conclusion: check.conclusion, sha: check.head_sha, url: check.html_url,
+      id: check.id, suiteId: check.check_suite?.id ?? null, event, scope, runId: event === 'unresolved event' ? null : run.id };
+  });
+}
+
 function codeOutcome(code, analysis, expectedRules) {
   if (!code.available) return 'UNAVAILABLE: code alert access is required';
   if (!analysis) return 'PENDING: no successful CodeQL analysis for the current default commit';
@@ -182,11 +213,12 @@ function codeOutcome(code, analysis, expectedRules) {
 
 async function collect(client, context, { full = true } = {}) {
   const branchRef = encodeURIComponent(`refs/heads/${context.branch}`);
-  const [analyses, code, checks, pulls] = await Promise.all([
+  const [analyses, code, checks, pulls, runs] = await Promise.all([
     client.list(`/code-scanning/analyses?ref=${branchRef}&tool_name=CodeQL`, { optional: true }),
     client.list(`/code-scanning/alerts?ref=${branchRef}`, { optional: true }),
-    client.list(`/commits/${context.head}/check-runs`, { key: 'check_runs', optional: true }),
-    client.list('/pulls?state=all', { optional: true })
+    client.list(`/commits/${context.head}/check-runs?filter=all`, { key: 'check_runs', optional: true }),
+    client.list('/pulls?state=all', { optional: true }),
+    client.list('/actions/runs', { key: 'workflow_runs', optional: true })
   ]);
   const valid = analyses.rows.filter((analysis) => analysis.commit_sha === context.head && analysis.ref === `refs/heads/${context.branch}` && analysis.tool?.name === 'CodeQL' && analysis.error === '' && !analysis.warning);
   const analysis = valid.sort((a, b) => b.id - a.id)[0] ?? null;
@@ -197,7 +229,7 @@ async function collect(client, context, { full = true } = {}) {
     code: safeCode, analysesAvailable: analyses.available,
     analysis: analysis ? { id: analysis.id, sha: analysis.commit_sha, results: analysis.results_count, category: analysis.category, url: `${context.url}/security/code-scanning?query=branch%3A${encodeURIComponent(context.branch)}` } : null,
     outcome: codeOutcome(safeCode, analysis, context.config.expectedRules),
-    checks: { available: checks.available, rows: latestChecks(checks.rows).filter((check) => check.sha === context.head) },
+    checks: { available: checks.available, rows: observedChecks(checks.rows, runs.rows, context, { lookupSha: context.head, scope: 'default SHA' }) },
     pulls: [], dependencies: { available: false, status: 'not-requested', rows: [] }, secrets: { available: false, status: 'not-requested', rows: [] }
   };
   // Retain closed human-authored repair PRs too: standard Autofix need not use
@@ -206,12 +238,18 @@ async function collect(client, context, { full = true } = {}) {
   if (selected.length > 30) throw new Error('More than 30 lab PRs need inspection; ask the instructor to narrow the exercise.');
   for (const summary of selected) {
     const pr = (await client.request(`/pulls/${summary.number}`)).data;
-    const current = await client.list(`/commits/${pr.head.sha}/check-runs`, { key: 'check_runs', optional: true });
+    const current = await client.list(`/commits/${pr.head.sha}/check-runs?filter=all`, { key: 'check_runs', optional: true });
+    const mergeSha = SHA.test(pr.merge_commit_sha ?? '') ? pr.merge_commit_sha : null;
+    const merge = mergeSha && mergeSha !== pr.head.sha
+      ? await client.list(`/commits/${mergeSha}/check-runs?filter=all`, { key: 'check_runs', optional: true })
+      : { available: false, rows: [] };
     const fresh = (await client.request(`/pulls/${pr.number}`)).data;
-    if (fresh.head.sha !== pr.head.sha || fresh.base.sha !== pr.base.sha || fresh.state !== pr.state) throw new Error('A PR changed while its checks were read. Refresh instead of using stale evidence.');
+    if (fresh.head.sha !== pr.head.sha || fresh.base.sha !== pr.base.sha || fresh.state !== pr.state || fresh.merge_commit_sha !== pr.merge_commit_sha) throw new Error('A PR changed while its checks were read. Refresh instead of using stale evidence.');
     report.pulls.push({ number: pr.number, url: pr.html_url, head: pr.head.sha, base: pr.base.sha, branch: pr.head.ref, state: pr.state,
       merged: Boolean(pr.merged), mergedAt: pr.merged_at, mergeSha: pr.merge_commit_sha, author: pr.user?.login,
-      checksAvailable: current.available, checks: latestChecks(current.rows).filter((check) => check.sha === pr.head.sha) });
+      checksAvailable: current.available || merge.available, sourceChecksAvailable: current.available, mergeChecksAvailable: merge.available,
+      checks: [...observedChecks(current.rows, runs.rows, context, { pr, lookupSha: pr.head.sha, scope: 'source SHA' }),
+        ...observedChecks(merge.rows, runs.rows, context, { pr, lookupSha: mergeSha, scope: pr.merged ? 'merged SHA' : 'PR test-merge SHA' })] });
   }
   if (full) {
     const [dependencies, secrets] = await Promise.all([
@@ -235,9 +273,9 @@ function render(context, report, { full = true } = {}) {
     '### CodeQL alerts', '', '| Alert | Rule | Native state |', '| --- | --- | --- |'];
   for (const alert of report.code.rows) lines.push(`| [#${alert.number}](${trustedUrl(alert.url, context)}) | ${cell(alert.rule)} | ${cell(alert.state)} |`);
   if (!report.code.rows.length) lines.push(`| - | ${report.code.available ? 'No alerts returned; compare the expected starter findings above' : `UNAVAILABLE (HTTP ${report.code.status})`} | Not completion proof |`);
-  lines.push('', `Current CodeQL analysis: ${report.analysis ? `**${report.analysis.id}**, ${report.analysis.results} result(s)` : '**PENDING / UNAVAILABLE**; no valid analysis for this exact default commit'}.`, '', '### Pull requests', '', '| PR | Revision | State | Current head checks |', '| --- | --- | --- | --- |');
+  lines.push('', `Current CodeQL analysis: ${report.analysis ? `**${report.analysis.id}**, ${report.analysis.results} result(s)` : '**PENDING / UNAVAILABLE**; no valid analysis for this exact default commit'}.`, '', '### Pull requests', '', 'Observed checks are listed separately by event and lookup revision. A push check is not a PR merge check. Keep unresolved or missing associations pending and inspect the native PR merge box; this table is not a merge verdict.', '', '| PR | Source revision | State | Observed native checks |', '| --- | --- | --- | --- |');
   for (const pr of report.pulls) {
-    const checks = pr.checksAvailable ? pr.checks.map((check) => `[${cell(check.name)}: ${cell(check.conclusion ?? check.status)}](${trustedUrl(check.url, context)})`).join('<br>') || 'PENDING: no current head checks; inspect PR merge checks too' : 'UNAVAILABLE';
+    const checks = pr.checksAvailable ? pr.checks.map((check) => `[${cell(check.name)}: ${cell(check.conclusion ?? check.status)} (${cell(check.event)}, ${cell(check.scope)}, #${check.id})](${trustedUrl(check.url, context)})`).join('<br>') || 'PENDING: no observed checks; inspect native PR merge checks' : 'UNAVAILABLE';
     lines.push(`| [#${pr.number}](${trustedUrl(pr.url, context)}) | ${pr.head.slice(0, 12)} | ${pr.merged ? 'merged; verify default alerts' : cell(pr.state)} | ${checks} |`);
   }
   if (!report.pulls.length) lines.push('| - | - | No matching PRs returned | Run setup / inspect access |');
@@ -251,24 +289,27 @@ function render(context, report, { full = true } = {}) {
       else if (!group.rows.length) lines.push('| - | No alerts returned; missing starter findings are pending, not passed | No baseline proof |');
       else for (const alert of group.rows) lines.push(`| [#${alert.number}](${trustedUrl(alert.url, context)}) | ${description(alert)} | ${cell(alert.state)} |`);
     }
-  } else lines.push('', '**Dependabot and secret alerts:** run `npm run lab:status` from the trusted default checkout. The Actions token is not assumed to have these permissions.');
+  } else lines.push('', '**Dependabot and secret alerts:** open [Dependabot alerts](' + context.url + '/security/dependabot) and [Secret scanning](' + context.url + '/security/secret-scanning) in GitHub.com. Record the original alert URLs and native states in the task issue. The Actions token is not assumed to have these permissions, so these reads are not requested; missing access is **unavailable**, not zero alerts. No local status command is required.');
   if (context.source) lines.push('', '**Source template:** intentionally unfinished; these are not learner results.');
   lines.push('', 'Next: follow [LAB.md](' + context.url + '/blob/' + context.branch + '/LAB.md). Do not dismiss real problems, skip tests, or turn off checks to make this table green.');
   return lines.join('\n');
 }
 
-async function postProgress(client, context, report, { full = true } = {}) {
+async function postProgress(client, context, report, { full = true, allowMissingExercise = false } = {}) {
   if (report.repositoryId !== context.repository.id || report.repository !== context.repository.full_name || report.head !== context.head || report.branch !== context.branch || report.labId !== context.config.id) throw new Error('Progress report identity or snapshot is stale. Refresh before posting.');
   const items = (await client.list('/issues?state=all')).rows;
   const exercise = selectManaged(items, context, 'exercise');
-  if (!exercise) throw new Error('Run lab:setup first to create the Exercise issue.');
+  if (!exercise) {
+    if (allowMissingExercise) return null;
+    throw new Error('Open Actions -> Start lab first to create the Exercise issue, or use the manual Git/browser setup.');
+  }
   const comments = (await client.list(`/issues/${exercise.number}/comments`)).rows;
   const tag = marker(context, full ? 'full-snapshot' : 'automatic-snapshot');
   const existing = comments.filter((comment) => comment.body?.startsWith(tag));
   if (existing.length > 1) throw new Error('Duplicate progress comments; refusing to overwrite an arbitrary comment.');
   for (const snapshot of report.pulls) {
     const pr = (await client.request(`/pulls/${snapshot.number}`)).data;
-    if (pr.head?.repo?.id !== context.repository.id || pr.base?.repo?.id !== context.repository.id || pr.head.sha !== snapshot.head || pr.base.sha !== snapshot.base || pr.state !== snapshot.state || Boolean(pr.merged) !== snapshot.merged) throw new Error('PR evidence changed after collection. Refresh the snapshot before posting.');
+    if (pr.head?.repo?.id !== context.repository.id || pr.base?.repo?.id !== context.repository.id || pr.head.sha !== snapshot.head || pr.base.sha !== snapshot.base || pr.state !== snapshot.state || Boolean(pr.merged) !== snapshot.merged || pr.merge_commit_sha !== snapshot.mergeSha) throw new Error('PR evidence changed after collection. Refresh the snapshot before posting.');
   }
   await unchanged(client, context);
   const body = render(context, report, { full });
@@ -308,4 +349,4 @@ async function gates(client, context) {
 }
 
 module.exports = { CHECKS, marker, contextFor, unchanged, selectManaged, starterSpecs, setup, summarizeCode, summarizeDependencies,
-  summarizeSecrets, latestChecks, codeOutcome, collect, render, postProgress, trainingRules, gates };
+  summarizeSecrets, latestChecks, observedChecks, codeOutcome, collect, render, postProgress, trainingRules, gates };

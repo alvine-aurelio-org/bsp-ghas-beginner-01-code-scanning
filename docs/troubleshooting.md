@@ -10,9 +10,12 @@ private source from another repository. Do not retry a mutation until you know w
 ### No Exercise issue, task issue, or starter PR
 
 **Do:** verify this is your **template copy**, not the source or a fork. From clean,
-trusted `dev`, run `npm run lab:setup`. Or open **Actions -> Start lab -> Run workflow**
-on `dev`, approving a workflows banner if GitHub asks. If Actions PR creation is
-disabled, use the local CLI route with your normal browser login.
+trusted default code, open **Actions -> Start lab -> Run workflow -> dev** with
+**Create starter pull requests** selected (default **true**). If policy denies PR
+creation, rerun with that checkbox cleared (**false**) for **issues only**, then
+follow [manual-setup.md](manual-setup.md). Fetch, inspect, and reuse partial branches;
+never overwrite them. If issue automation also fails, the instructor creates only
+missing human Exercise/task issues and links native evidence, with automation unavailable.
 
 **See result:** setup reports the exact items it created or found. Reruns preserve
 open **and closed** items; look at **Issues / Pull requests -> Closed** too. A closed
@@ -20,48 +23,70 @@ case is not a reason to create duplicates or claim it was reset. Ask the instruc
 before arranging a genuinely new attempt.
 
 **Why:** templates copy files, not issues or PRs. Do not weaken organization Actions
-policy, add a PAT, or imitate Dependabot to create a missing bot PR.
+policy, add a PAT, or imitate Dependabot to create a missing bot PR. A missing
+automated comment is a setup gap, not a completed lesson or a clean alert inventory.
 
 ### Login denied, wrong repository, missing alerts, or HTTP 403
 
-**Do:** check `git remote -v`, `gh auth status`, and your browser's account/repository.
-If not signed in, use `gh auth login` with **GitHub.com -> HTTPS -> Login with a web
-browser**. Complete required SSO/MFA normally. Ask the instructor to check only the
-intended repository's products and alert permissions, including secret-alert access.
+**Do:** check `git remote -v` and your browser's account/repository. Use normal Git
+for Windows / Git Credential Manager browser authentication, or approved SSH, with
+required SSO/MFA. A token prompt is a reason to ask for the approved Git sign-in flow,
+not to copy/export a PAT. Ask the instructor to check only the intended repository's
+products and permissions, including actual secret-alert visibility.
 
 **See result:** the approved identity can read the intended native page/API, or the
 denial stays explicit. Do not copy credentials, export Git tokens, or buy access.
 
 **Why:** a 403 or an Actions-token limitation is **unavailable**, never "zero alerts."
-Browser, Git, and CLI credentials are separate; refreshing every login is not a cure
-for missing entitlement or authorization.
+Browser access, Git authentication, and commit attribution are different. An Actions
+token does not inherit your browser's Dependabot/secret access; use the native pages.
+Changing every login or Git author name is not a cure for missing entitlement.
 
-### Setup or status refuses the checkout
+### Setup or a demonstration ran from the wrong branch
 
-**Do:** run `git status --short --branch`. Save, commit, and push intended PR work.
-Only with no edits, use [Refresh progress from dev](start-here.md#refresh-progress-from-dev).
-Confirm that `dev` is the real default, up to date, and contains only trusted merged code.
+**Do:** inspect the Actions run's selected branch and checkout SHA. **Start lab**,
+**Lab progress**, and the offered demonstrations run on trusted **dev**, not arbitrary
+PR code. For local branch work, check `git status --short --branch`; preserve intended
+edits and use [Refresh progress from dev](start-here.md#refresh-progress-from-dev)
+only with a clean tree. Confirm `dev` is the real default with trusted merged code.
 
-**See result:** `npm run lab:setup` / `npm run lab:status` can operate on the verified
-default. A stale or untrusted checkout stays rejected; preserve the error for help.
+**See result:** the correct workflow run is tied to the intended default SHA. A
+stale or wrong-branch run is not substituted for the requested evidence.
 
-**Why:** privileged reads and issue comments must not run from arbitrary PR code.
+**Why:** setup, issue comments, and fixture preparation must not trust arbitrary PR code.
 Never use `reset --hard`, force-push, or delete work just to pass this guard.
 
-### Node, install, checkout, or local push fails
+### Git checkout or push fails
 
-**Do:** check `node --version` is **24.16.0+ within 24.x**, and that Git and `gh` are
-installed. Run `npm ci --ignore-scripts --no-audit --no-fund` at the clone root.
-After changing to a branch with a different lockfile, run it again. For PR checkout,
-use `gh pr list` and replace `NUMBER` in `gh pr checkout NUMBER` with the actual
-copy-specific number. Save local changes before switching branches.
+**Do:** use [Check out a PR branch](start-here.md#check-out-a-pr-branch). Read the actual
+browser PR head, replace the placeholder, fetch, and distinguish first-time tracking
+checkout from switching/pulling an existing branch. Use the real bot/Autofix branch
+when appropriate, not the notes starter. Stop for conflicts, a missing upstream,
+wrong origin, or a refused fast-forward; preserve local work and ask the instructor.
 
-**See result:** this branch's locked dependencies install and the intended PR is
-checked out. For a push rejection, inspect the actual current remote/PR first;
-do not retry blindly or force-push over remote changes.
+**See result:** the intended head branch is checked out and your ordinary commits
+are attributed to your own GitHub identity. Inspect the actual remote/PR before
+retrying a failed push; an error does not prove that nothing reached the server.
 
-**Why:** branch switches do not reinstall packages. Do not delete/regenerate the
-lockfile, run a broad dependency upgrade, or relax scripts/network policy to hide an install error.
+**Why:** Git handles source here, not local dependencies. Do not install a runtime,
+package manager, or extra CLI to get through the lesson, and never push directly to
+default, discard edits, overwrite a partial starter, or rewrite a bot's history.
+
+### A setup-created PR has no checks or asks for approval
+
+**Do:** inspect the PR's **Checks** and **Approve workflows to run** banner. An
+authorized human with write access can approve eligible runs. If no run was triggered,
+make an ordinary personally attributed commit on that PR branch and push. Use a
+small notes-only change when you must first observe an unchanged negative state,
+especially Lab 04's policy failure or Lab 05's unsafe/missing-analysis case.
+
+**See result:** current Quality and Security regression summaries report checkout
+SHA, installed lodash version, and real counts; CodeQL analyzes that PR revision.
+Dependency review runs on PRs only. PR runs can check a merge SHA: record it and the
+associated head revision distinctly. Missing or skipped runs remain pending.
+
+**Why:** a setup-created PR is not proof its follow-up workflows ran. Do not add
+credentials, loosen organization policy, or edit checks to make a green icon appear.
 
 ## Scans and test results
 
@@ -95,19 +120,31 @@ alert is not a native baseline finding in this repository.
 | Lab 05 unsafe-preview head | 2 pass / 1 fail (preview) | 3 pass |
 | Completed source/policy repairs | 3 pass | 3 pass |
 
-**See result:** `npm test` still has 20 ordinary passes. Only the named intentional
-failures explain a red baseline; missing dependencies, zero tests, unexpected failures,
-or removed/skipped tests need correction, not a completion claim.
+**See result:** the **Quality / unit-and-compatibility** summary still has 20 ordinary
+passes plus the table's compatibility counts; **Security regression / secure-behavior**
+reports all 3 security tests. Retain the initial, intermediate, and repaired run URLs.
+Only named intentional failures explain a red baseline; zero/skipped tests, runner
+installation failures, unexpected failures, or removed assertions need investigation.
 
 **Why:** these failures teach separate boundaries. A full solution may help repair
 source, but tests must not be altered to make unsafe behavior pass.
 
 ### Extended-query edit fails, or it produces no extra alerts
 
-**Do:** in [.github/codeql/codeql-config.yml](../.github/codeql/codeql-config.yml),
-keep `name: BSP beginner CodeQL`, add `queries:`, and place
-`- uses: security-extended` on the next line with **two leading spaces**. Use no tabs.
-Inspect the current CodeQL logs and the workflow's `config-file` reference.
+**Do:** in VS Code, keep the name and source boundary in
+[.github/codeql/codeql-config.yml](../.github/codeql/codeql-config.yml):
+
+```yaml
+name: BSP beginner CodeQL
+paths:
+  - src
+queries:
+  - uses: security-extended
+```
+
+Use two leading spaces on list entries, none on `name`, `paths`, or `queries`, and
+no tabs. Inspect current CodeQL logs and the workflow's `config-file` reference;
+do not edit the workflow itself. Lab 05 intentionally starts one case with the missing query.
 
 **See result:** the changed configuration is used by a real analysis. More queries
 do not guarantee more findings; that is not a reason to insert more vulnerable code.
@@ -118,7 +155,8 @@ language, stable analysis category, or setup mode to repair a YAML indentation e
 ### Autofix is unavailable, fails, or has no usable suggestion
 
 **Do:** use only normal **Generate fix**. If it yields a usable reviewed suggestion,
-**Create PR with fix**, move the query change to it, and close the unused starter.
+**Create PR with fix**, check out that real PR's browser-displayed head, copy the
+full query configuration into it using VS Code, and close the unused starter.
 Otherwise label **Manual fallback** and use the lesson's small `escape(label)` fix.
 
 **See result:** one actual source-repair PR is tested and tracked. A pending/error
@@ -131,7 +169,9 @@ cloud-agent session, or buy a seat to work around an unavailable suggestion.
 
 **Do:** confirm the source repair was merged to `dev`, then inspect the new default
 run or dependency-graph refresh. Reopen the original alert URL and check its branch
-and state. Run local `lab:status` only from clean, updated default.
+and state. Follow [the shared Git refresh](start-here.md#refresh-progress-from-dev).
+If needed, dispatch **Lab progress** on `dev` for a CodeQL/PR snapshot, but use the
+native Dependabot/secret pages for those states and put original URLs in the task issue.
 
 **See result:** CodeQL/Dependabot findings become **Fixed** when native default
 results confirm the repair. Indexing delays stay pending. If the source is still
@@ -156,27 +196,47 @@ unknown/real exposure goes to the incident owner. Do not claim provider revocati
 **Why:** the mock rotation cannot invalidate a real provider credential, and an
 `Unknown` validity label does not certify a value as harmless.
 
-### Push check fails for another reason, or is unexpectedly accepted
+### Fresh push fixture, rejected push, or recovery is unclear
 
-**Do:** read the sanitized `lab:push-check` result. It must identify native **GH013 /
-SendGrid** and independently confirm the exact remote ref is absent. Authentication,
-network, or unrelated rule failures do not count. Never use a bypass link.
+**Do:** in Lab 03 use only the fresh **Prepare push exercise** run on `dev` and its
+private summary's unique repository/run/attempt fixture, exact default SHA, filename,
+branch, and Git-only sequence. This is an intentionally copyable never-issued value,
+not a real API secret or the historical seeded marker. Stop if the clean local/default
+remote SHA differs, the branch already exists, or a ref check errors. A successful
+exact-ref query with no ref returned proves absence; a login/network failure does not.
 
-**See result:** genuine prevention is recorded, or the case stays pending. If
-accepted, **stop** and contact the instructor; follow only the script's exact
-owned-branch instruction, preserve evidence, and do not repeat the probe.
+Require native **GH013 + Push cannot contain secrets + SendGrid**, then independently
+confirm the exact attempted remote ref is absent and default SHA unchanged. If the
+push was accepted, **STOP and contact the instructor**; do not retry, bypass,
+force-push, delete remote refs, or amend already-pushed history.
+
+Only after confirmed rejection, and while the last commit is the recorded unpushed
+synthetic commit, follow Lab 03's recovery in [LAB.md](../LAB.md): replace the same
+file's content with `TRAINING_MARKER_REMOVED` in VS Code, stage that exact file,
+amend that one commit, and push normally to the same branch. Verify the accepted
+harmless SHA with the exact remote-ref read, then return to `dev`. If other work
+has been committed since the probe, stop for help instead of amending it.
+
+**See result:** a secret-specific native rejection with absent ref is distinct
+from the later accepted harmless commit. Keep the safe branch for instructor cleanup,
+not default merge. Preserve only sanitized rejection, commit/ref evidence, and run URL.
 
 **Why:** nonzero Git exit status alone cannot prove secret scanning blocked a push.
-Do not delete unrelated branches, disable protection, or expose the marker in a ticket.
+A later deletion commit leaves the earlier marker in the outgoing history. The
+scoped last-unpushed-commit amendment avoids that without force-pushing or rewriting
+remote history. Never expose a marker in a ticket or screenshot.
 
 ### No Dependabot PR, or its compatibility check fails
 
 **Do:** inspect **Security -> Dependabot alerts**, the graph, enabled security
 updates, and available Dependabot logs. Use the alert's **Create security update**
 button if offered; do not create a human imitation. Confirm the real bot author.
-On that PR branch, reinstall the lockfile, inspect `npm ls lodash --depth=0`, review
-release/advisory details and behavior tests, then update only `validatedVersion`
-in [dependency-policy.json](../dependency-policy.json).
+On that actual PR branch, inspect its initial Quality summary's **installed lodash
+version** and **2 compatibility passes / 1 failure** before policy edits. If a normal
+human commit is needed to trigger it, use notes only first. Review release/advisory
+details, bot manifest/lockfile changes, and behavior tests, then edit only
+`validatedVersion` in [dependency-policy.json](../dependency-policy.json) using VS Code.
+Push the review commit and inspect the new Actions summaries; do not hand-edit the lockfile.
 
 **See result:** the real bot PR retains its history and current checks turn green
 after review. Current patched versions take priority over printed version numbers.
@@ -189,8 +249,11 @@ Do not silence tests, downgrade, inline registry secrets, or mistake `lab/work` 
 
 **Do:** open the merge box's rule details and the current run URLs. Distinguish a
 CodeQL finding, missing required analysis, failed QA, pending run, and inherited
-approval requirement. In Lab 05, only the admin runs `lab:gates` and only for its
-owned named ruleset; verify medium-or-higher and all three required check names.
+approval requirement. In Lab 05, the admin follows [browser ruleset setup](instructor.md#configure-lab-05-rules)
+for **BSP beginner 05 - security gates**: active on `dev`, no bypass actors,
+CodeQL medium-or-higher plus errors/warnings, and exact `unit-and-compatibility`,
+`secure-behavior`, and `dependency-review` checks with GitHub Actions source where offered.
+Checks must run before their names can be selected; do not omit unregistered ones.
 Replace `./bsp-missing-query.ql` with `security-extended` in the missing-analysis
 case's query configuration, observe valid green analysis, then close without merging.
 
@@ -203,12 +266,15 @@ Never remove a rule/check, fabricate an approval, bypass, or merge the broken wo
 
 ### Metrics or smoke output looks like a dashboard or release
 
-**Do:** keep `lab:metrics`, `lab:status`, and `lab:smoke` outputs separate. Match the
-local smoke hash to `git rev-parse HEAD` from trusted, clean default.
+**Do:** keep **Lab progress** snapshots and **Lab demonstrations** outputs separate.
+The demonstrations workflow is available only in Labs 03 and 05: `secret-response`
+in 03; `metrics` and `smoke` in 05. Dispatch on `dev` and retain each Actions run URL
+and exact summary SHA. Do not substitute a local hash or conflate runs at different SHAs.
 
 **See result:** metrics are the synthetic **4-day versus 3-day** comparison; status
-is live repository evidence; smoke is a loopback-only demonstration at the exact hash.
+is a CodeQL/PR snapshot; smoke is a **runner-loopback-only** demonstration at the
+reported hash. No laptop server or live organization metric is involved.
 
-**Why:** none creates an organization dashboard, cloud deployment, production
-approval, or completed rollback. Record a known-safe ref and remaining risk in the
-[handover](../exercise/notes.md); optional features stay conditional in [topics.md](topics.md).
+**Why:** none proves an organization dashboard, cloud deployment, production
+approval, or executed rollback. Record a known-safe ref and remaining risk in the
+[handover](../exercise/notes.md); [optional topics](topics.md) remain conditional.

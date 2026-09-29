@@ -1,37 +1,31 @@
 # Lab 01: Find and fix your first CodeQL alerts
 
 **Time:** about 60 minutes. **Goal:** repair two download findings in your own private copy.
-Complete [docs/start-here.md](docs/start-here.md) first. Use the recreated Exercise
-and task issues, not the source template's issues or scan history.
-Run terminal commands separately; inspect each result before continuing.
+Complete [docs/start-here.md](docs/start-here.md) first. Use your copy's Exercise
+and task issues, not the template's history. Use Git, VS Code, and browser github.com
+only; the unchanged tests and CodeQL run in GitHub Actions, not on your laptop.
 
 ## 1. See your own CodeQL alerts
 
 **Do**
 
-1. Open **Actions -> CodeQL** and the completed run for your copy's `dev` branch.
-2. Open **Security -> Code scanning** (sometimes under **Security and quality**).
+1. **Before changing anything**, open the original `dev` runs for **Quality /
+   unit-and-compatibility** and **Security regression / secure-behavior** in Actions.
+   Read their summaries: checkout SHA, installed lodash version, and suite counts.
+   Keep both run URLs and the baseline counts in your task issue.
+2. Open **Actions -> CodeQL** and its completed run for that default revision.
+   Open **Security -> Code scanning** (sometimes under **Security and quality**).
    Select the default branch and open `js/path-injection` and
    `js/missing-rate-limiting` in [src/routes/download.cjs](src/routes/download.cjs).
    Keep both actual alert URLs; alert numbers differ between copies.
-3. In your clone, run the tests, then find the notes-only `lab/work` starter PR:
-
-   ```powershell
-   npm test
-   npm run test:compatibility
-   npm run test:security
-   gh pr list
-   ```
-
-4. Replace `NUMBER` below with the PR number whose head is `lab/work`:
-
-   ```powershell
-   gh pr checkout NUMBER
-   ```
+3. In **Pull requests**, find the notes-only PR whose head is `lab/work`.
+   [Check out that PR branch](docs/start-here.md#check-out-a-pr-branch) using Git.
+   If setup could not create it, follow [manual setup](docs/manual-setup.md);
+   do not change organization policy or recreate closed work.
 
 **See result:** 20 ordinary tests and 3 compatibility tests pass. Security tests
 show **1 pass / 2 failures**: preview passes; download access and rate limiting fail.
-The two CodeQL findings are real alerts in this copy. Missing findings mean
+These are observed Actions results, not predicted local results. Missing findings mean
 [setup needs attention](docs/troubleshooting.md), not that this lab is complete.
 
 **Why:** normal behavior tests can pass while a security boundary is still unsafe.
@@ -73,22 +67,16 @@ often it can be called. No real file paths or attack payloads need to be tried.
    comment. Change `readFile(target, 'utf8')` to
    `readFile(allowedFiles.get(name), 'utf8')`. Keep the error handling.
 3. If stuck, replace the whole route with
-   [solutions/download-allowlist.cjs](solutions/download-allowlist.cjs).
-   On Windows, this is the same replacement:
-
-   ```powershell
-   Copy-Item solutions/download-allowlist.cjs src/routes/download.cjs
-   ```
-
-   On other systems, copy its full text into the route in VS Code or the
-   [GitHub file editor on the PR branch](docs/start-here.md#save-and-push-a-small-change).
-4. Run `npm run test:security`. In **Source Control**, stage only the route,
-   **Commit** with `fix: allow only workshop downloads`, then **... -> Push**.
-   Open this PR's **Files changed** and **Checks**.
+   [solutions/download-allowlist.cjs](solutions/download-allowlist.cjs): open it
+   in VS Code, copy its full text into the route, and save. Do not edit the solution.
+4. [Save and push](docs/start-here.md#save-and-push-a-small-change) only the route
+   with message `fix: allow only workshop downloads`. In this PR's **Files changed**
+   and **Checks**, open the new Security regression run and its summary.
+   **Record this intermediate run before adding the limiter.**
 
 **See result:** security tests now show **2 passes / 1 failure**. The limiter test
 still fails, so leave the PR unmerged. The original default-branch alerts can
-remain open while the repair is only on this PR.
+remain open while the repair is only on this PR. Zero or skipped tests do not count.
 
 **Why:** the request selects a trusted map entry instead of constructing a path.
 The intermediate solution intentionally does not fix rate limiting.
@@ -115,24 +103,18 @@ The intermediate solution intentionally does not fix rate limiting.
    ```
 
 3. Insert `limiter` between the `'/download'` argument and the existing async
-   handler in `app.get()`. Keep the allowlist. The dependency is already installed.
-   Full-file fallback: [solutions/src/routes/download.cjs](solutions/src/routes/download.cjs).
-
-   ```powershell
-   Copy-Item solutions/src/routes/download.cjs src/routes/download.cjs
-   npm test
-   npm run test:compatibility
-   npm run test:security
-   ```
-
-   Skip `Copy-Item` if you made the small edits; the tests are required either way.
+   handler in `app.get()`. Keep the allowlist. The dependency is already in the
+   lockfile; Actions installs it. If needed, copy the full text of
+   [solutions/src/routes/download.cjs](solutions/src/routes/download.cjs) into
+   the route using VS Code, not a shell copy command.
 4. Fill the short [exercise/notes.md](exercise/notes.md) handover with your owner,
    target, original alert URLs, PR URL, and remaining risk. Stage the route and
-   notes, **Commit**, and **Push** to the same PR. Do not edit any tests.
+   notes, **Commit**, and **Push** to the same PR. Inspect the new Actions summaries
+   and current CodeQL and Dependency review checks. Do not edit tests or workflows.
 
 **See result:** **20 ordinary + 3 compatibility + 3 security tests pass**.
 The limiter test allows 60 fixture reads and expects HTTP 429 for the next one.
-Inspect the new CodeQL and other checks for this exact PR revision.
+Match the run's PR revision and reported checkout SHA; retain the earlier failing runs.
 
 **Why:** access control and abuse control need separate fixes; a passing test is
 useful evidence, not a substitute for native CodeQL analysis.
@@ -145,18 +127,20 @@ useful evidence, not a substitute for native CodeQL analysis.
    The route repair must be present; a notes-only change is not a solution.
 2. When current checks and any inherited rules permit, select **Merge pull request
    -> Confirm merge** into `dev`. This exercise adds no independent-reviewer gate.
-3. Follow [Refresh progress from dev](docs/start-here.md#refresh-progress-from-dev),
-   including `npm run lab:status` from the clean, updated default checkout.
+3. Follow [Refresh progress from dev](docs/start-here.md#refresh-progress-from-dev).
+   Use **Actions -> Lab progress -> Run workflow -> dev** if its CodeQL/PR snapshot
+   needs refreshing; a snapshot alone does not establish whole-lab completion.
 4. Open the new default-branch CodeQL run, then revisit both original alert URLs.
-   Check their default-branch state, not just the PR check's green icon.
+   Check the merged checkout SHA and default-branch state, not just a green PR icon.
 5. Add the final run URLs and observed alert states to your task issue's handover
    comment. If analysis/indexing is pending, record pending and refresh later.
 
 **See result:** both original findings are **Fixed**, not **Dismissed**, after
-analysis of the merged default revision. The Exercise comment links your copy's evidence.
+analysis of the merged default revision. Your task issue links the original,
+intermediate, and final evidence; an unavailable automated comment stays unavailable.
 
 **Why:** only a merged repair plus the scanner's readback proves this default-branch
 finding was fixed. A successful analysis can still contain alerts.
 
-Production note: the map assumes trusted, non-symlink fixture files; the simple
-in-process limiter is not a complete production or multi-server design.
+Production note: this map trusts non-symlink fixture files. Its in-process limiter
+does not provide complete production or multi-server protection.

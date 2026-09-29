@@ -12,15 +12,7 @@
     "test": "node --test test/baseline.test.cjs test/mock-provider.test.cjs test/metrics.test.cjs",
     "test:security": "node --test test/security.test.cjs test/rate-limit.test.cjs",
     "test:rate-limit": "node --test test/rate-limit.test.cjs",
-    "test:compatibility": "node --test test/dependency-policy.test.cjs",
-    "lab:setup": "node .workshop/cli.cjs setup",
-    "lab:status": "node .workshop/cli.cjs status",
-    "lab:enable": "node .workshop/cli.cjs enable",
-    "lab:gates": "node .workshop/cli.cjs gates",
-    "lab:secret-response": "node .workshop/local-demos.cjs secret-response",
-    "lab:metrics": "node .workshop/local-demos.cjs metrics",
-    "lab:smoke": "node .workshop/local-demos.cjs smoke",
-    "lab:push-check": "node .workshop/push-probe.cjs"
+    "test:compatibility": "node --test test/dependency-policy.test.cjs"
   },
   "dependencies": {
     "express": "5.2.1",
