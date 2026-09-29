@@ -1,146 +1,165 @@
 # Lab 01: Find and fix your first CodeQL alerts
 
-**Time:** about 60 minutes. **Goal:** repair two download findings in your own private copy.
-Complete [docs/start-here.md](docs/start-here.md) first. Use your copy's Exercise
-and task issues, not the template's history. Use Git, VS Code, and browser github.com
-only; the unchanged tests and CodeQL run in GitHub Actions, not on your laptop.
+**Time:** 60 minutes. **Goal:** fix two download alerts in your private copy.
+**Tools:** Git, VS Code, GitHub.com; dependencies and tests run in GitHub Actions.
 
-## 1. See your own CodeQL alerts
+**Prerequisites:** Git for Windows with Git Credential Manager; complete browser sign-in
+and required MFA/organization SSO when prompted. Use an approved private organization
+with existing Code Security, Secret Protection, and Actions entitlement/access.
+No purchases or personal access tokens. Access denied or settings missing? Stop for an administrator;
+never change organization policy.
 
-**Do**
+## 1. Create and clone your private copy
 
-1. **Before changing anything**, open the original `dev` runs for **Quality /
-   unit-and-compatibility** and **Security regression / secure-behavior** in Actions.
-   Read their summaries: checkout SHA, installed lodash version, and suite counts.
-   Keep both run URLs and the baseline counts in your task issue.
-2. Open **Actions -> CodeQL** and its completed run for that default revision.
-   Open **Security -> Code scanning** (sometimes under **Security and quality**).
-   Select the default branch and open `js/path-injection` and
-   `js/missing-rate-limiting` in [src/routes/download.cjs](src/routes/download.cjs).
-   Keep both actual alert URLs; alert numbers differ between copies.
-3. In **Pull requests**, find the notes-only PR whose head is `lab/work`.
-   [Check out that PR branch](docs/start-here.md#check-out-a-pr-branch) using Git.
-   If setup could not create it, follow [manual setup](docs/manual-setup.md);
-   do not change organization policy or recreate closed work.
+Open the [public source template](https://github.com/alvine-aurelio-org/bsp-ghas-beginner-01-code-scanning).
+Select **Use this template > Create a new repository**, not **Fork**.
+Choose your approved organization and **Private**; leave **Include all branches** off
+(default branch only), then **Create repository**. Confirm its default branch is `dev`.
+Templates do not copy issues, scans, or security settings.
 
-**See result:** 20 ordinary tests and 3 compatibility tests pass. Security tests
-show **1 pass / 2 failures**: preview passes; download access and rate limiting fail.
-These are observed Actions results, not predicted local results. Missing findings mean
-[setup needs attention](docs/troubleshooting.md), not that this lab is complete.
+In your copy, open **Settings > Security and quality > Advanced Security** (or **Advanced Security**).
+Enable **Code Security**, **Secret Protection**, **secret scanning**, **push protection**,
+**dependency graph**, and **Dependabot alerts**; ask an administrator if needed.
+Enable **Actions** if prompted. Keep the shipped **advanced CodeQL** workflow;
+do not enable **Default setup**.
 
-**Why:** normal behavior tests can pass while a security boundary is still unsafe.
+Copy your copy's **Code > HTTPS** URL. In VS Code: **F1 > Git: Clone**, paste that URL,
+choose a folder, then **Open**. Open **Terminal > New Terminal** at the repository root.
+Copy/run **one line at a time; STOP on unexpected errors**. Never force-push,
+reset destructively, or weaken tests/rules. Remote must match your copy; status must be clean.
 
-## 2. Follow the unsafe file-path flow
+```powershell
+git remote -v
+git status --short --branch
+git switch dev
+git pull --ff-only
+```
 
-**Do**
+Only if Git later reports unknown author, replace these values and configure this clone,
+then retry that commit. Preserve good existing identity; author email is not authentication.
 
-1. In the path-injection alert, expand the flow/path view if offered. Open
-   [src/routes/download.cjs](src/routes/download.cjs) in VS Code.
-2. Find `req.query.name`, then `path.resolve(dataRoot, name)`, then `readFile()`.
-   A caller's text currently chooses the filesystem path.
-3. Open the two intended documents: [data/welcome.txt](data/welcome.txt) and
-   [data/policy.txt](data/policy.txt). Read the download test in
-   [test/security.test.cjs](test/security.test.cjs); it creates its own temporary canaries.
-4. Look at the second alert too: the download handler has no request limiter.
+```powershell
+git config user.name "YOUR_NAME"
+git config user.email "YOUR_VERIFIED_EMAIL"
+```
 
-**See result:** one handler has two different problems: what it can read and how
-often it can be called. No real file paths or attack payloads need to be tried.
+**Check:** Your private copy is open on clean `dev`, with approved security enabled.
 
-**Why:** `path.resolve()` normalizes a path; it does not confine caller input to a folder.
+## 2. Read the baseline and create your branch
 
-## 3. Allow only the two workshop documents
+Before editing, open **Actions**; wait for completed `dev` runs for **CodeQL**, **Quality**, and
+**Security regression**. For each missing initial run, select that workflow separately:
+**Run workflow > dev > Run workflow**. No button? Check default `dev` and Actions enabled;
+if denied, stop for an administrator.
 
-**Do**
+Read summaries: **20 ordinary + 3 compatibility passes**; security **1 pass / 2 failures**
+(download access and limiter fail). Keep all three run URLs, checkout SHAs, and counts for the PR.
+In **Security > Code scanning**, select `dev`; open `js/path-injection` and
+`js/missing-rate-limiting` in [src/routes/download.cjs](src/routes/download.cjs).
+Keep both actual alert URLs. Follow `req.query.name` through `path.resolve(dataRoot, name)`
+to `readFile()`: normalization is not access control. Missing/pending scans are not completion;
+a green CodeQL run can contain findings.
 
-1. Stay on `lab/work`. Inside `registerDownload()`, before `app.get()`, add:
+Create this branch; if it already exists, stop rather than overwrite it:
 
-   ```javascript
-   const allowedFiles = new Map([
-     ['welcome.txt', path.resolve(dataRoot, 'welcome.txt')],
-     ['policy.txt', path.resolve(dataRoot, 'policy.txt')]
-   ]);
-   ```
+```powershell
+git switch -c lab/fix-download
+```
 
-2. Change the existing name check to
-   `typeof name !== 'string' || !allowedFiles.has(name)`.
-   Remove `const target = path.resolve(dataRoot, name);` and its obsolete unsafe-path
-   comment. Change `readFile(target, 'utf8')` to
-   `readFile(allowedFiles.get(name), 'utf8')`. Keep the error handling.
-3. If stuck, replace the whole route with
-   [solutions/download-allowlist.cjs](solutions/download-allowlist.cjs): open it
-   in VS Code, copy its full text into the route, and save. Do not edit the solution.
-4. [Save and push](docs/start-here.md#save-and-push-a-small-change) only the route
-   with message `fix: allow only workshop downloads`. In this PR's **Files changed**
-   and **Checks**, open the new Security regression run and its summary.
-   **Record this intermediate run before adding the limiter.**
+**Check:** Both alerts and expected baseline counts are visible; `lab/fix-download` is active.
 
-**See result:** security tests now show **2 passes / 1 failure**. The limiter test
-still fails, so leave the PR unmerged. The original default-branch alerts can
-remain open while the repair is only on this PR. Zero or skipped tests do not count.
+## 3. Allow only the two documents
 
-**Why:** the request selects a trusted map entry instead of constructing a path.
-The intermediate solution intentionally does not fix rate limiting.
+Edit only [src/routes/download.cjs](src/routes/download.cjs). Immediately inside
+`registerDownload(app, dataRoot)`, before `app.get()`, add:
+
+```javascript
+  const allowedFiles = new Map([
+    ['welcome.txt', path.resolve(dataRoot, 'welcome.txt')],
+    ['policy.txt', path.resolve(dataRoot, 'policy.txt')]
+  ]);
+```
+
+Replace `name.length === 0` with `!allowedFiles.has(name)`; keep the string check.
+Delete `const target = path.resolve(dataRoot, name);` and both preceding unsafe-warning comments.
+Replace `readFile(target, 'utf8')` with `readFile(allowedFiles.get(name), 'utf8')`.
+Keep error handling; save. Status and staged filenames below must show **only this route**;
+inspect each output before continuing.
+
+```powershell
+git status --short
+git diff -- src/routes/download.cjs
+git add -- src/routes/download.cjs
+git diff --cached --name-only
+git commit -m "fix: allow only workshop downloads"
+git push -u origin lab/fix-download
+```
+
+On GitHub: **Pull requests > New pull request**, base `dev`, compare `lab/fix-download`,
+then **Create pull request**. Title: **Fix download path and rate limiting**.
+Paste baseline alert/run URLs, SHAs, and counts into its description.
+In **Checks**, open the current Security regression summary; match its PR source head
+to the latest PR commit (checkout can be a different test-merge SHA).
+Comment the intermediate run URL and counts **before adding the limiter**. Do not merge yet.
+
+**Check:** Security regression shows **2 passes / 1 failure**; the PR remains unmerged.
 
 ## 4. Limit repeated downloads
 
-**Do**
+In the same route, add beside the other imports:
 
-1. In the same route, add this beside the other imports:
+```javascript
+const { rateLimit } = require('express-rate-limit');
+```
 
-   ```javascript
-   const { rateLimit } = require('express-rate-limit');
-   ```
+Inside `registerDownload()`, after the allowlist and before `app.get()`, add:
 
-2. Inside `registerDownload()`, before `app.get()`, add:
+```javascript
+  const limiter = rateLimit({
+    windowMs: 60_000,
+    limit: 60,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false
+  });
+```
 
-   ```javascript
-   const limiter = rateLimit({
-     windowMs: 60_000,
-     limit: 60,
-     standardHeaders: 'draft-8',
-     legacyHeaders: false
-   });
-   ```
+Replace `app.get('/download', async (req, res) => {` with
+`app.get('/download', limiter, async (req, res) => {`. Keep the allowlist and tests unchanged.
+The dependency is already locked; Actions installs it. Save, inspect the diff,
+and require the staged list to contain only the route before committing:
 
-3. Insert `limiter` between the `'/download'` argument and the existing async
-   handler in `app.get()`. Keep the allowlist. The dependency is already in the
-   lockfile; Actions installs it. If needed, copy the full text of
-   [solutions/src/routes/download.cjs](solutions/src/routes/download.cjs) into
-   the route using VS Code, not a shell copy command.
-4. Fill the short [exercise/notes.md](exercise/notes.md) handover with your owner,
-   target, original alert URLs, PR URL, and remaining risk. Stage the route and
-   notes, **Commit**, and **Push** to the same PR. Inspect the new Actions summaries
-   and current CodeQL and Dependency review checks. Do not edit tests or workflows.
+```powershell
+git diff -- src/routes/download.cjs
+git add -- src/routes/download.cjs
+git diff --cached --name-only
+git commit -m "fix: limit repeated downloads"
+git push
+```
 
-**See result:** **20 ordinary + 3 compatibility + 3 security tests pass**.
-The limiter test allows 60 fixture reads and expects HTTP 429 for the next one.
-Match the run's PR revision and reported checkout SHA; retain the earlier failing runs.
+The same PR updates. Comment its latest Security regression URL, PR head/checkout SHAs,
+and counts. The limiter test permits 60 fixture reads and expects HTTP 429 next.
 
-**Why:** access control and abuse control need separate fixes; a passing test is
-useful evidence, not a substitute for native CodeQL analysis.
+**Check:** Security regression shows **3 passes / 0 failures** on the latest PR revision.
 
-## 5. Merge and see the original alerts fixed
+## 5. Merge and verify both original alerts
 
-**Do**
+Review **Files changed** and latest-head **Checks**: only the route changed;
+**Quality: 20 ordinary + 3 compatibility passes**, **Security regression: 3 passes / 0 failures**,
+**CodeQL: success**, and **Dependency review: success**. Zero/skipped tests do not count.
+Missing/pending latest checks? Wait and refresh, not repeated pushes.
+Meet existing rules and required approvals without weakening them; only then select
+**Merge pull request > Confirm merge** into `dev`.
 
-1. In the actual repair PR, inspect **Files changed** and current **Checks**.
-   The route repair must be present; a notes-only change is not a solution.
-2. When current checks and any inherited rules permit, select **Merge pull request
-   -> Confirm merge** into `dev`. This exercise adds no independent-reviewer gate.
-3. Follow [Refresh progress from dev](docs/start-here.md#refresh-progress-from-dev).
-   Use **Actions -> Lab progress -> Run workflow -> dev** if its CodeQL/PR snapshot
-   needs refreshing; a snapshot alone does not establish whole-lab completion.
-4. Open the new default-branch CodeQL run, then revisit both original alert URLs.
-   Check the merged checkout SHA and default-branch state, not just a green PR icon.
-5. Add the final run URLs and observed alert states to your task issue's handover
-   comment. If analysis/indexing is pending, record pending and refresh later.
+```powershell
+git switch dev
+git pull --ff-only
+git rev-parse HEAD
+```
 
-**See result:** both original findings are **Fixed**, not **Dismissed**, after
-analysis of the merged default revision. Your task issue links the original,
-intermediate, and final evidence; an unavailable automated comment stays unavailable.
+Open the new `dev` CodeQL run for that merged SHA. Revisit **both original alert URLs**
+on `dev`; require **Fixed**, not **Dismissed**. Add final run/alert URLs, merged SHA,
+and observed states to a comment on the same PR. Pending indexing remains pending, not complete.
+The map trusts controlled non-symlink fixtures; this in-process limiter is not complete
+production or multi-server protection.
 
-**Why:** only a merged repair plus the scanner's readback proves this default-branch
-finding was fixed. A successful analysis can still contain alerts.
-
-Production note: this map trusts non-symlink fixture files. Its in-process limiter
-does not provide complete production or multi-server protection.
+**Check:** Both original alerts show **Fixed** on merged `dev` after its analysis.

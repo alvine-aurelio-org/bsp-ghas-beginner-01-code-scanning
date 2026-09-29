@@ -6,7 +6,7 @@ on:
         description: Create starter pull requests
         type: boolean
         required: true
-        default: true
+        default: false
 permissions:
   contents: write
   issues: write

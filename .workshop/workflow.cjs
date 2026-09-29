@@ -5,7 +5,7 @@ const path = require('node:path');
 const { GitHub, git, targetRepository } = require('./github.cjs');
 const { contextFor, setup, collect, render, postProgress } = require('./engine.cjs');
 
-function starterChoice(value = 'true') {
+function starterChoice(value = 'false') {
   if (!['true', 'false'].includes(value)) throw new Error('Create starter pull requests must be true or false.');
   return value === 'true';
 }
@@ -17,7 +17,7 @@ function assertManagementRun(env, context, checkout) {
   }
 }
 
-async function execute(command, client, context, { createPulls = true } = {}) {
+async function execute(command, client, context, { createPulls = false } = {}) {
   if (command === 'setup') {
     const result = await setup(client, context, { createPulls });
     const lines = ['## Start lab', '', `Default commit: \`${context.head}\`.`, '',
@@ -25,16 +25,16 @@ async function execute(command, client, context, { createPulls = true } = {}) {
       ...result.pulls.map((pr) => `- [PR #${pr.number}](${pr.url}) (${pr.state}); inspect its actual head branch before fetching.`), '',
       'Existing open and closed work is preserved, not reset. These work items are not proof of completed security fixes.', '',
       'Use **Git, VS Code, and GitHub.com**. Open the [lesson](' + context.url + '/blob/' + context.branch + '/LAB.md).', '',
-      createPulls ? 'If a starter shows **Approve workflows to run**, a user with write access approves the checks. A personal Git commit also triggers fresh checks.'
-        : 'Starter creation was not requested. Preserve any partially created branches and use the [manual Git/browser setup](' + result.manualSetup + ').', '',
-      'Native Dependabot and Autofix PRs come from those GitHub features, not from Start lab.'];
+      createPulls ? 'Optional legacy starters were requested. They do not replace the single lab guide.'
+        : 'No starter PRs were requested. Follow only [LAB.md](' + result.guide + ') for the Git branches and browser PR steps.', '',
+      'No additional setup or manual instruction document is required.'];
     return { result, summary: lines.join('\n') + '\n' };
   }
   if (command !== 'status') throw new Error('Choose setup or status; administrative changes are not available to the workflow.');
   const report = await collect(client, context, { full: false });
   const issue = await postProgress(client, context, report, { full: false, allowMissingExercise: true });
   const summary = render(context, report, { full: false }) + (issue ? `\n\n[Exercise comment](${issue})\n`
-    : '\n\n**Automatic issue comment unavailable:** no managed Exercise issue was found. Open Start lab or use the manual setup. The native pages and this current snapshot remain separate evidence, not whole-lab completion.\n');
+    : '\n\n**Automatic issue comment unavailable:** no managed Exercise issue was found. Follow LAB.md and keep evidence in the actual repair PR. This snapshot is not whole-lab completion.\n');
   return { result: { issue, head: report.head, outcome: report.outcome, dependencies: 'use native Security page', secrets: 'use native Security page' }, summary };
 }
 

@@ -110,7 +110,7 @@ async function ensurePull(client, context, pulls, spec, task) {
   }
   const pr = (await client.request('/pulls', { method: 'POST', body: {
     head: spec.branch, base: context.branch, title: spec.title,
-    body: `${tag}\n\n${spec.explanation}\n\nTask: #${task.number}. [Open the five-step lesson](${context.url}/blob/${context.branch}/LAB.md).\n\nIf GitHub displays **Approve workflows to run**, approve the checks. A personal commit also triggers fresh checks. No token or policy bypass is needed.`
+    body: `${tag}\n\n${spec.explanation}\n\nTask: #${task.number}. [Follow only LAB.md](${context.url}/blob/${context.branch}/LAB.md).`
   } })).data;
   pulls.push(pr);
   return pr;
@@ -125,13 +125,13 @@ async function setup(client, context, { createPulls = true } = {}) {
   const issues = (await client.list('/issues?state=all')).rows;
   const lesson = `${context.url}/blob/${context.branch}/LAB.md`;
   const exercise = await ensureIssue(client, context, issues, 'exercise', `Exercise - Lab ${context.config.id}: ${context.config.title}`,
-    `## Start with the short lesson\n\n[Open LAB.md](${lesson}) and follow one step at a time using **Git, VS Code, and GitHub.com**.\n\n${context.config.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n## See progress\n\n**Lab progress** shows native CodeQL and current check results. Use **Security -> Dependabot alerts / Secret scanning** for those original native states; no local management command is needed. Permission denied means **unavailable**, never zero findings. Manual checkboxes are not proof of a fix. If automated PR creation is unavailable, use the [Git/browser setup](${context.url}/blob/${context.branch}/docs/manual-setup.md).\n\n[Security](${context.url}/security) | [Actions](${context.url}/actions) | [Pull requests](${context.url}/pulls)\n\n${context.source ? '**Source template:** this is an unfinished example, not participant completion.' : 'Work items belong to this copy. GitHub scans create your own alerts.'}`);
+    `## One guide for this lab\n\n[Follow only LAB.md](${lesson}). It contains setup, exact file edits, Git commands, pull requests, and final checks.\n\n**Git + VS Code + GitHub.com.** Keep actual alert and run URLs in your repair PR comments. This issue and its automatic comment are evidence, not another instruction guide.\n\n[Security](${context.url}/security) | [Actions](${context.url}/actions) | [Pull requests](${context.url}/pulls)\n\n${context.source ? '**Source template:** intentionally unfinished; these are not participant results.' : 'Work items belong to this copy; native scans create its own alerts.'}`);
   const task = await ensureIssue(client, context, issues, 'task', context.config.taskTitle,
     `Follow [the lesson](${lesson}) and track the real alert, PR and final run links here.\n\nAssign yourself. Note one target date. Do not paste secret values.\n\nExercise: #${exercise.number}. A merged PR only counts as remediation after the original native alert reports **fixed** (or, for the inert secret, the correctly explained test resolution).`);
   if (!createPulls) {
     await unchanged(client, context);
     return { exercise: exercise.html_url, task: task.html_url, pulls: [],
-      manualSetup: `${context.url}/blob/${context.branch}/docs/manual-setup.md`, starterCreation: 'not requested; preserve any existing branches and PRs' };
+      guide: lesson, starterCreation: 'not requested; use the Git branches and PR steps in LAB.md; preserve any existing work' };
   }
   const pulls = (await client.list('/pulls?state=all')).rows;
   const created = [];
@@ -301,7 +301,7 @@ async function postProgress(client, context, report, { full = true, allowMissing
   const exercise = selectManaged(items, context, 'exercise');
   if (!exercise) {
     if (allowMissingExercise) return null;
-    throw new Error('Open Actions -> Start lab first to create the Exercise issue, or use the manual Git/browser setup.');
+    throw new Error('No managed Exercise issue exists. Follow LAB.md and keep evidence in the actual repair PR.');
   }
   const comments = (await client.list(`/issues/${exercise.number}/comments`)).rows;
   const tag = marker(context, full ? 'full-snapshot' : 'automatic-snapshot');
