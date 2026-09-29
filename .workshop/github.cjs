@@ -42,39 +42,21 @@ class GitHub {
     const endpoint = `repos/${this.repository}${suffix}`;
     let response;
     if (this.transport) {
-      response = await this.transport(endpoint, { method, body });
-    } else if (this.token) {
+      response = await this.transport(endpoint, { method, body, includeHeaders });
+    } else {
+      if (!this.token) throw new Error('Use the browser workflow; its scoped Actions token is required. No local management login is needed.');
       const result = await fetch(`https://api.github.com/${endpoint}`, {
         method, redirect: 'error', signal: AbortSignal.timeout(90_000),
         headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body)
       });
       const text = await result.text();
-      response = { ok: result.ok, status: result.status, data: text ? JSON.parse(text) : null, link: result.headers.get('link') ?? '' };
-    } else {
-      const args = ['api', '--hostname', 'github.com', endpoint, '--method', method, '-H', 'X-GitHub-Api-Version: 2022-11-28'];
-      if (body !== undefined) args.push('--input', '-');
-      if (includeHeaders) args.push('--include');
-      const result = spawnSync('gh', args, {
-        input: body === undefined ? undefined : JSON.stringify(body), encoding: 'utf8', windowsHide: true,
-        timeout: 90_000, maxBuffer: 16 * 1024 * 1024
-      });
-      if (result.error) throw new Error('GitHub CLI could not run. Install gh and use gh auth login with browser sign-in.');
-      let output = result.stdout;
-      let link = '';
-      if (includeHeaders && output.startsWith('HTTP/')) {
-        const separator = /\r?\n\r?\n/.exec(output);
-        if (!separator) throw new Error('GitHub CLI did not return the requested response headers.');
-        const headers = output.slice(0, separator.index);
-        link = headers.match(/^link:\s*(.+)$/im)?.[1]?.trim() ?? '';
-        output = output.slice(separator.index + separator[0].length);
-      }
       let data = null;
-      try { data = output.trim() ? JSON.parse(output) : null; } catch { throw new Error('GitHub returned an unexpected non-JSON response.'); }
-      response = { ok: result.status === 0, status: Number(result.stderr.match(/HTTP (\d+)/)?.[1] ?? (result.status === 0 ? 200 : 0)), data, link };
+      try { data = text ? JSON.parse(text) : null; } catch { throw new Error('GitHub returned an unexpected non-JSON response.'); }
+      response = { ok: result.ok, status: result.status, data, link: result.headers.get('link') ?? '' };
     }
     if (!response.ok && !optional) {
-      // Never include API bodies: secret-alert responses and generated fixes may contain sensitive values.
+      // Secret-alert API bodies include values. Never reflect those bodies in errors.
       throw new Error(`${method} ${suffix.split('?')[0] || '/repository'} returned HTTP ${response.status}. Check your repository access and the troubleshooting guide.`);
     }
     return response;
@@ -96,7 +78,6 @@ class GitHub {
       if (!Array.isArray(batch)) throw new Error('GitHub list response has an unexpected shape.');
       rows.push(...batch);
       if (cursorPagination) {
-        // Dependabot rejects page=N. Only follow its actual repository-scoped Link cursor.
         const next = result.link?.match(/<([^>]+)>;\s*rel="next"/)?.[1];
         if (!next) return { available: true, status: result.status, rows };
         const url = new URL(next);

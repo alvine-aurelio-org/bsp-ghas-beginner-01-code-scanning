@@ -32,6 +32,6 @@ jobs:
         with:
           node-version: '24.16.0'
       - name: Read native metadata and refresh the Exercise issue
-        run: node .workshop/cli.cjs status
+        run: node .workshop/workflow.cjs status
         env:
           GH_TOKEN: ${{ github.token }}

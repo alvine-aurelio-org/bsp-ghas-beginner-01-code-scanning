@@ -20,6 +20,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24.16.0'
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm test
-      - run: npm run test:compatibility
+      - name: Install the committed lockfile on the runner
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run ordinary and compatibility tests with a revision-bound summary
+        run: node .workshop/ci.cjs quality
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
