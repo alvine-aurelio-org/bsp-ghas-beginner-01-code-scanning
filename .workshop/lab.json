@@ -1,6 +1,8 @@
 {
   "edition": "beginner-2026",
   "delivery": "git-vscode-browser-2026-09-29",
+  "instructionFile": "LAB.md",
+  "instructionLayout": "single-guide-2026-09-29",
   "participantTools": [
     "Git",
     "VS Code",
@@ -25,11 +27,11 @@
   "starter": "repair",
   "taskTitle": "Fix the download alerts, one change at a time",
   "steps": [
-    "See your own CodeQL alerts",
-    "Read the unsafe file-path flow",
-    "Allow only the two workshop files",
+    "Create and clone your private copy",
+    "Read the baseline and create your branch",
+    "Allow only the two documents",
     "Limit repeated downloads",
-    "Merge and see the original alerts fixed"
+    "Merge and verify both original alerts"
   ],
   "source": "alvine-aurelio-org/bsp-ghas-beginner-01-code-scanning"
 }
